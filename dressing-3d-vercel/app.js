@@ -29,7 +29,8 @@
   // ---------- scène ----------
   var stage = document.getElementById('stage');
   var canvas = document.getElementById('view');
-  var DPR0 = Math.min(window.devicePixelRatio || 1, 1.5);
+  var DPR_CAPS = { bas: 1, auto: Math.min(window.devicePixelRatio || 1, 1.5), haut: Math.min(window.devicePixelRatio || 1, 2) };
+  var DPR0 = DPR_CAPS.auto;
   var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: DPR0 < 1.5, alpha: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(DPR0);
   renderer.setClearColor(0x000000, 0);
@@ -538,6 +539,20 @@
 
   document.getElementById('spin').addEventListener('change', function (e) { controls.autoRotate = e.target.checked && !reduce; invalidate(); });
 
+  // qualité : bas (DPR 1 fixe), auto (adaptatif, comme avant), haut (DPR jusqu'à 2, jamais dégradé)
+  var qualityMode = 'auto';
+  Array.prototype.forEach.call(document.querySelectorAll('[data-quality]'), function (b) {
+    b.addEventListener('click', function () {
+      qualityMode = b.dataset.quality;
+      dprNow = DPR_CAPS[qualityMode];
+      renderer.setPixelRatio(dprNow);
+      resize();
+      slowN = 0; fastN = 0;
+      Array.prototype.forEach.call(document.querySelectorAll('[data-quality]'), function (o) { o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
+      invalidate(true);
+    });
+  });
+
   // vues
   var tween = null;
   Array.prototype.forEach.call(document.querySelectorAll('[data-view]'), function (b) {
@@ -622,9 +637,10 @@
   function ease(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
   var last = performance.now();
   var slowN = 0, fastN = 0, dprNow = DPR0;
+  var rafId = null;
   function settle(cur, tgt) { return Math.abs(tgt - cur) < 0.0004; }
   function tick(now) {
-    requestAnimationFrame(tick);
+    rafId = requestAnimationFrame(tick);
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
     var moving = false, i;
     for (i = 0; i < 4; i++) {
@@ -659,7 +675,7 @@
     renderer.render(scene, camera);
     // qualité adaptative : si le rendu est lent, on baisse la résolution
     var ms = performance.now() - t0;
-    if (dirty > 0 || cam || moving) {
+    if (qualityMode === 'auto' && (dirty > 0 || cam || moving)) {
       if (ms > 22) { slowN++; fastN = 0; } else { fastN++; slowN = 0; }
       if (slowN > 12 && dprNow > 1) { dprNow = 1; renderer.setPixelRatio(1); resize(); slowN = 0; }
     }
@@ -675,5 +691,17 @@
     loadingEl.classList.add('hidden');
     loadingEl.addEventListener('transitionend', function () { loadingEl.remove(); });
   }
-  requestAnimationFrame(tick);
+
+  // pas de rendu tant que l'onglet est en arrière-plan
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+    } else if (rafId === null) {
+      last = performance.now();
+      invalidate(true);
+      rafId = requestAnimationFrame(tick);
+    }
+  });
+
+  rafId = requestAnimationFrame(tick);
 })();
