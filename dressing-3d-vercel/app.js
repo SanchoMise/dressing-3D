@@ -160,7 +160,11 @@
     var g = new THREE.Group();
     g.position.set(hingeX, DOOR_Y, -0.5);
     if (mirror) g.scale.x = -1;
-    g.userData.sign = mirror ? 1 : -1;
+    // le sous-groupe swing (rotation) est enfant de g (qui porte le miroir) :
+    // une réflexion composée avec une rotation en inverse le sens, donc le
+    // signe ne dépend plus de mirror ici (contrairement à avant l'ajout du
+    // décalage de charnière, où rotation et miroir étaient sur le même objet)
+    g.userData.sign = -1;
     g.userData.baseX = hingeX;
 
     // sous-groupe qui porte la rotation, décalé du chant vers l'axe de cuvette
@@ -515,10 +519,13 @@
     stopNote.hidden = !parts.length;
     stopNote.textContent = parts.join(' · ');
   }
+  var doorToggleMobile = document.getElementById('door-toggle-mobile');
   function setOpen(deg, stagger) {
     openDeg = deg; slOpen.value = deg;
-    btnOpen.setAttribute('aria-pressed', deg > 0 ? 'true' : 'false');
-    btnOpen.textContent = deg > 0 ? 'Fermer les portes' : 'Ouvrir les portes';
+    [btnOpen, doorToggleMobile].forEach(function (b) {
+      b.setAttribute('aria-pressed', deg > 0 ? 'true' : 'false');
+      b.textContent = deg > 0 ? 'Fermer les portes' : 'Ouvrir les portes';
+    });
     var now = performance.now(), delays = [0, 110, 110, 220];
     for (var i = 0; i < 4; i++) {
       doorTarget[i] = Math.min(deg, limits[i]);
@@ -527,7 +534,9 @@
     if (reduce) for (var j = 0; j < 4; j++) doorCur[j] = targetOf(j);
     updateNote(); invalidate(true);
   }
-  btnOpen.addEventListener('click', function () { setOpen(openDeg > 0 ? 0 : MAXDEG, true); });
+  [btnOpen, doorToggleMobile].forEach(function (b) {
+    b.addEventListener('click', function () { setOpen(openDeg > 0 ? 0 : MAXDEG, true); });
+  });
 
   // ouverture individuelle : clic direct sur une porte dans la scène
   function toggleDoor(i) {
