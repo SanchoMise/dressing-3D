@@ -562,6 +562,16 @@
 
   document.getElementById('spin').addEventListener('change', function (e) { controls.autoRotate = e.target.checked && !reduce; invalidate(); });
 
+  // volet réglages (mobile) : masqué par défaut, ouvert par ce bouton
+  var appEl = document.querySelector('.app');
+  var settingsToggle = document.getElementById('settings-toggle');
+  settingsToggle.addEventListener('click', function () {
+    var open = appEl.classList.toggle('panel-open');
+    settingsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    settingsToggle.textContent = open ? 'Fermer les réglages' : 'Réglages';
+    if (open) document.getElementById('panel').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  });
+
   // qualité : bas (DPR 1 fixe), auto (adaptatif, comme avant), haut (DPR jusqu'à 2, jamais dégradé)
   var qualityMode = 'auto';
   Array.prototype.forEach.call(document.querySelectorAll('[data-quality]'), function (b) {
