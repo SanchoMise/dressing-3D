@@ -669,5 +669,11 @@
   refresh();
   window.__dressing = { state: state, refresh: refresh, camera: camera, scene: scene, setOpen: setOpen, limits: limits, why: why };
   controls.addEventListener('change', function () { invalidate(); });
+
+  var loadingEl = document.getElementById('loading');
+  if (loadingEl) {
+    loadingEl.classList.add('hidden');
+    loadingEl.addEventListener('transitionend', function () { loadingEl.remove(); });
+  }
   requestAnimationFrame(tick);
 })();

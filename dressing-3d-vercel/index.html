@@ -8,7 +8,7 @@
 <title>Habillage dressing 3D</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,6 +18,10 @@
     <canvas id="view" aria-label="Maquette 3D du dressing, à faire tourner avec la souris ou au doigt"></canvas>
     <div class="hint">Glisser : tourner &middot; molette ou pincer : zoom &middot; clic droit : déplacer &middot; survol : détail d'une pièce</div>
     <div class="card" id="card" aria-live="polite"></div>
+    <div class="loading" id="loading" role="status" aria-live="polite">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <p>Chargement de la scène 3D…</p>
+    </div>
   </main>
 
   <aside class="panel">
