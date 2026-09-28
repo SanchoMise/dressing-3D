@@ -150,6 +150,11 @@
 
   var CUP_GEO = new THREE.CylinderGeometry(1.75, 1.75, 1.6, 20); CUP_GEO.rotateX(Math.PI / 2);
   var CUP_MAT = stdMat('#8b949c');
+  // axe réel de rotation d'une charnière à cuvette Ø35 : décalé du chant de
+  // la porte vers l'axe de la cuvette (plan p.2 : 21,5 à 23 mm, non fixé
+  // faute de modèle précis — 22 mm retenu, cohérent avec la position des
+  // cuvettes déjà modélisée ci-dessous)
+  var HINGE_OFFSET = 2.2;
   function makeDoor(i, hingeX, mirror) {
     var n = i + 1;
     var g = new THREE.Group();
@@ -158,17 +163,23 @@
     g.userData.sign = mirror ? 1 : -1;
     g.userData.baseX = hingeX;
 
+    // sous-groupe qui porte la rotation, décalé du chant vers l'axe de cuvette
+    var swing = new THREE.Group();
+    swing.position.x = HINGE_OFFSET;
+    g.add(swing);
+    g.userData.swing = swing;
+
     var door = paintMesh(new THREE.BoxGeometry(DW, DH, TH), 'door');
-    door.position.set(DW / 2, DH / 2, -TH / 2);
+    door.position.set(DW / 2 - HINGE_OFFSET, DH / 2, -TH / 2);
     pick(door, 'P' + n, INFO.P(n));
     edged(door);
-    g.add(door); reg(door, 'doors', i);
+    swing.add(door); reg(door, 'doors', i);
 
     var frame = paintMesh(extrude(frameShape(), 0.5), 'frame');
-    frame.position.z = 0;
+    frame.position.set(-HINGE_OFFSET, 0, 0);
     pick(frame, 'C' + n, INFO.C(n));
     edged(frame);
-    g.add(frame); reg(frame, 'frames', i);
+    swing.add(frame); reg(frame, 'frames', i);
 
     var hg = new THREE.Group();
     var rearGeo = extrude(handleShape(true), 2); rearGeo.scale(-1, 1, 1);
@@ -176,18 +187,18 @@
     var rear = woodMesh(rearGeo);
     var plate = woodMesh(plateGeo); plate.position.z = 2;
     [rear, plate].forEach(function (m) { pick(m, 'H' + n, INFO.H(n)); edged(m, 30); hg.add(m); });
-    hg.position.set(DW - 0.1, 88, 0);
-    g.add(hg); reg(hg, 'handles', i);
+    hg.position.set(DW - 0.1 - HINGE_OFFSET, 88, 0);
+    swing.add(hg); reg(hg, 'handles', i);
 
     var cups = new THREE.Group();
     HINGES.forEach(function (h) {
       var cm = new THREE.Mesh(CUP_GEO, CUP_MAT);
-      cm.position.set(2.2, h, -TH);
+      cm.position.set(2.2 - HINGE_OFFSET, h, -TH);
       cm.castShadow = true;
       pick(cm, 'CUP', INFO.CUP);
       cups.add(cm);
     });
-    g.add(cups); reg(cups, 'cups', i);
+    swing.add(cups); reg(cups, 'cups', i);
 
     g.userData.parts = { frame: frame, handle: hg, cups: cups };
     scene.add(g);
@@ -440,10 +451,11 @@
 
   function footprints(g) {
     g.updateMatrixWorld(true);
+    var swing = g.userData.swing;
     var rects = [[0, DW, -TH, 0], [1, DW, 0, 0.5], [DW - 3.1, DW - 0.1, 0, 3]];
     return rects.map(function (r) {
       return [[r[0], r[2]], [r[1], r[2]], [r[1], r[3]], [r[0], r[3]]].map(function (q) {
-        var v = g.localToWorld(new THREE.Vector3(q[0], 0, q[1])); return [v.x, v.z];
+        var v = swing.localToWorld(new THREE.Vector3(q[0] - HINGE_OFFSET, 0, q[1])); return [v.x, v.z];
       });
     });
   }
@@ -460,7 +472,7 @@
   }
   var WALL_POLY = [[-10, -DEP], [0, -DEP], [0, SPUR], [-10, SPUR]];
   function hitAt(i, deg) {
-    doorGroups.forEach(function (g) { g.rotation.y = g.userData.sign * deg * Math.PI / 180; });
+    doorGroups.forEach(function (g) { g.userData.swing.rotation.y = g.userData.sign * deg * Math.PI / 180; });
     var mine = footprints(doorGroups[i]), k, a, b;
     for (a = 0; a < mine.length; a++) if (sat(mine[a], WALL_POLY)) return 'le mur';
     for (k = 0; k < 4; k++) if (k !== i) {
@@ -480,7 +492,7 @@
     }
     // vérification de la configuration finale (chaque porte à sa butée)
     function finalHit() {
-      doorGroups.forEach(function (g, n) { g.rotation.y = g.userData.sign * limits[n] * Math.PI / 180; });
+      doorGroups.forEach(function (g, n) { g.userData.swing.rotation.y = g.userData.sign * limits[n] * Math.PI / 180; });
       var F = doorGroups.map(footprints);
       for (var m = 0; m < 4; m++) for (var n = m + 1; n < 4; n++)
         for (var a = 0; a < 3; a++) for (var b = 0; b < 3; b++) if (sat(F[m][a], F[n][b])) return [m, n];
@@ -491,7 +503,7 @@
       var big = limits[fh[0]] >= limits[fh[1]] ? fh[0] : fh[1];
       limits[big] = Math.max(0, limits[big] - 0.5); why[big] = 'P' + ((big === fh[0] ? fh[1] : fh[0]) + 1);
     }
-    doorGroups.forEach(function (g) { g.rotation.y = 0; g.updateMatrixWorld(true); });
+    doorGroups.forEach(function (g) { g.userData.swing.rotation.y = 0; g.updateMatrixWorld(true); });
   })();
   window.__limits = limits;
 
@@ -651,7 +663,7 @@
         moving = true;
       } else if (!settle(doorCur[i], tg)) moving = true;
     }
-    for (i = 0; i < 4; i++) doorGroups[i].rotation.y = doorGroups[i].userData.sign * doorCur[i];
+    for (i = 0; i < 4; i++) doorGroups[i].userData.swing.rotation.y = doorGroups[i].userData.sign * doorCur[i];
     if (!settle(explodeCur, explodeTarget)) {
       explodeCur = reduce ? explodeTarget : explodeCur + (explodeTarget - explodeCur) * (1 - Math.exp(-dt * 8));
       if (settle(explodeCur, explodeTarget)) explodeCur = explodeTarget;
