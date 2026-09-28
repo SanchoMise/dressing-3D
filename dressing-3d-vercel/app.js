@@ -547,13 +547,17 @@
   }
   slOpen.addEventListener('input', function () { setOpen(+slOpen.value, false); });
 
-  // éclaté
+  // éclaté (curseur du panneau + copie flottante sur mobile, synchronisés)
   var explodeTarget = 0, explodeCur = 0;
-  var exSlider = document.getElementById('explode'), exOut = document.getElementById('explode-out');
-  exSlider.addEventListener('input', function () {
-    explodeTarget = exSlider.value / 100; invalidate(true);
-    exOut.textContent = exSlider.value + ' %';
-    if (reduce) explodeCur = explodeTarget;
+  var exSliders = [document.getElementById('explode'), document.getElementById('explode-mobile')];
+  var exOuts = [document.getElementById('explode-out'), document.getElementById('explode-mobile-out')];
+  exSliders.forEach(function (s) {
+    s.addEventListener('input', function () {
+      explodeTarget = s.value / 100; invalidate(true);
+      exSliders.forEach(function (o) { o.value = s.value; });
+      exOuts.forEach(function (o) { o.textContent = s.value + ' %'; });
+      if (reduce) explodeCur = explodeTarget;
+    });
   });
   var SPREAD = [-9, -3, 3, 9];
   function applyExplode(t) {
