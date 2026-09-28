@@ -445,7 +445,7 @@
 
   // portes : angle demandé, limité par les butées (mur, portes voisines, poignées)
   var MAXDEG = 105;
-  var openDeg = 0, doorCur = [0, 0, 0, 0], doorStart = [0, 0, 0, 0], limits = [MAXDEG, MAXDEG, MAXDEG, MAXDEG], why = ['', '', '', ''];
+  var openDeg = 0, doorCur = [0, 0, 0, 0], doorTarget = [0, 0, 0, 0], doorStart = [0, 0, 0, 0], limits = [MAXDEG, MAXDEG, MAXDEG, MAXDEG], why = ['', '', '', ''];
   var btnOpen = document.getElementById('btn-open');
   var slOpen = document.getElementById('openang'), outOpen = document.getElementById('openang-out'), stopNote = document.getElementById('stopnote');
 
@@ -507,7 +507,7 @@
   })();
   window.__limits = limits;
 
-  function targetOf(i) { return Math.min(openDeg, limits[i]) * Math.PI / 180; }
+  function targetOf(i) { return doorTarget[i] * Math.PI / 180; }
   function updateNote() {
     outOpen.textContent = openDeg + '°';
     var parts = [];
@@ -520,11 +520,22 @@
     btnOpen.setAttribute('aria-pressed', deg > 0 ? 'true' : 'false');
     btnOpen.textContent = deg > 0 ? 'Fermer les portes' : 'Ouvrir les portes';
     var now = performance.now(), delays = [0, 110, 110, 220];
-    for (var i = 0; i < 4; i++) doorStart[i] = now + (reduce || !stagger ? 0 : delays[i]);
+    for (var i = 0; i < 4; i++) {
+      doorTarget[i] = Math.min(deg, limits[i]);
+      doorStart[i] = now + (reduce || !stagger ? 0 : delays[i]);
+    }
     if (reduce) for (var j = 0; j < 4; j++) doorCur[j] = targetOf(j);
     updateNote(); invalidate(true);
   }
   btnOpen.addEventListener('click', function () { setOpen(openDeg > 0 ? 0 : MAXDEG, true); });
+
+  // ouverture individuelle : clic direct sur une porte dans la scène
+  function toggleDoor(i) {
+    doorTarget[i] = doorTarget[i] > 0.5 ? 0 : limits[i];
+    doorStart[i] = performance.now();
+    if (reduce) doorCur[i] = targetOf(i);
+    invalidate(true);
+  }
   slOpen.addEventListener('input', function () { setOpen(+slOpen.value, false); });
 
   // éclaté
@@ -630,6 +641,9 @@
     if (m) { setGlow(m, true); }
     hovered = m;
     showCard(m);
+    if (m && m.userData.ref && /^P[1-4]$/.test(m.userData.ref)) {
+      toggleDoor(+m.userData.ref[1] - 1);
+    }
   });
 
   // taille
